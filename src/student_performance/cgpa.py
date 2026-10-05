@@ -1,18 +1,64 @@
-"""CGPA calculation (v2 - debugged: credit-weighted, validated)."""
+"""CGPA calculation and performance classification.
 
-GRADE_POINTS = {"O": 10, "A+": 9, "A": 8, "B+": 7, "B": 6, "C": 5, "P": 4, "F": 0}
+CGPA = sum(grade_point * credits) / sum(credits). The grade scale is read from
+``config/grade_scale.json`` so it is not hard-coded.
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Iterable
+from functools import lru_cache
+from pathlib import Path
+
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "grade_scale.json"
 
 
-def calculate_cgpa(courses):
+@lru_cache(maxsize=1)
+def load_grade_scale(path: Path = CONFIG_PATH) -> dict[str, int]:
+    """Load the grade -> grade-point mapping from JSON config."""
+    with path.open(encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _validate(grade: str, credits: float, scale: dict[str, int]) -> None:
+    if grade not in scale:
+        raise ValueError(f"unknown grade: {grade!r}")
+    if credits <= 0:
+        raise ValueError("credits must be positive")
+
+
+def calculate_cgpa(courses: Iterable[tuple[str, float]]) -> float:
+    """Return the credit-weighted CGPA rounded to 2 decimals.
+
+    Args:
+        courses: iterable of ``(grade, credits)`` pairs, e.g. ``("A", 4)``.
+
+    Raises:
+        ValueError: if empty, a grade is unknown, or credits are not positive.
+    """
+    scale = load_grade_scale()
+    courses = list(courses)
     if not courses:
         raise ValueError("courses must not be empty")
-    total_points = 0
-    total_credits = 0
+    total_points = total_credits = 0.0
     for grade, credits in courses:
-        if grade not in GRADE_POINTS:
-            raise ValueError(f"unknown grade: {grade!r}")
-        if credits <= 0:
-            raise ValueError("credits must be positive")
-        total_points += GRADE_POINTS[grade] * credits
+        _validate(grade, credits, scale)
+        total_points += scale[grade] * credits
         total_credits += credits
     return round(total_points / total_credits, 2)
+
+
+def performance_band(cgpa: float) -> str:
+    """Classify a CGPA into a performance band."""
+    if not 0 <= cgpa <= 10:
+        raise ValueError("cgpa must be between 0 and 10")
+    if cgpa >= 8.5:
+        return "Distinction"
+    if cgpa >= 7.0:
+        return "First Class"
+    if cgpa >= 6.0:
+        return "Second Class"
+    if cgpa >= 4.0:
+        return "Pass"
+    return "Fail"

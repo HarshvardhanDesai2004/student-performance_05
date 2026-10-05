@@ -32,3 +32,28 @@ def test_invalid_grade_raises():
 def test_non_positive_credits_raises():
     with pytest.raises(ValueError):
         calculate_cgpa([("A", 0)])
+
+
+@pytest.mark.parametrize(
+    ("cgpa", "band"),
+    [
+        (9.0, "Distinction"),
+        (8.5, "Distinction"),
+        (7.2, "First Class"),
+        (6.0, "Second Class"),
+        (4.0, "Pass"),
+        (3.9, "Fail"),
+    ],
+)
+def test_performance_band(cgpa, band):
+    from student_performance.cgpa import performance_band
+
+    assert performance_band(cgpa) == band
+
+
+@pytest.mark.parametrize("bad", [-0.1, 10.1])
+def test_performance_band_out_of_range(bad):
+    from student_performance.cgpa import performance_band
+
+    with pytest.raises(ValueError):
+        performance_band(bad)
