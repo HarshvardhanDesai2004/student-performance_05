@@ -7,6 +7,7 @@ CGPA = sum(grade_point * credits) / sum(credits). The grade scale is read from
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Iterable
 from functools import lru_cache
 from pathlib import Path
@@ -22,9 +23,14 @@ def load_grade_scale(path: Path = CONFIG_PATH) -> dict[str, int]:
 
 
 def _validate(grade: str, credits: float, scale: dict[str, int]) -> None:
+    if not isinstance(grade, str):
+        raise ValueError("grade must be a string")
     if grade not in scale:
         raise ValueError(f"unknown grade: {grade!r}")
-    if credits <= 0:
+    if isinstance(credits, bool) or not isinstance(credits, int | float):
+        raise ValueError("credits must be a positive number")
+    numeric_credits = float(credits)
+    if not math.isfinite(numeric_credits) or numeric_credits <= 0:
         raise ValueError("credits must be positive")
 
 
